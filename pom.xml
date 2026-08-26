@@ -2,22 +2,22 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>dev.wilhelms</groupId>
-  <artifactId>indenting-xml-stream-writer</artifactId>
-  <version>1.0.2</version>
-  <name>Indenting XMLStreamWriter</name>
-  <description>A small XMLStreamWriter decorator with safe element indentation.</description>
-  <url>https://github.com/jpwilhelms/indenting-xml-stream-writer</url>
+  <artifactId>pretty-xml-stream-writer</artifactId>
+  <version>2.0.0</version>
+  <name>Pretty XMLStreamWriter</name>
+  <description>A small XMLStreamWriter decorator with safe element indentation and optional, element-scoped attribute ordering.</description>
+  <url>https://github.com/jpwilhelms/pretty-xml-stream-writer</url>
   <licenses><license><name>The Apache Software License, Version 2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0.txt</url><distribution>repo</distribution></license></licenses>
   <scm>
-    <connection>scm:git:https://github.com/jpwilhelms/indenting-xml-stream-writer.git</connection>
-    <developerConnection>scm:git:https://github.com/jpwilhelms/indenting-xml-stream-writer.git</developerConnection>
-    <url>https://github.com/jpwilhelms/indenting-xml-stream-writer</url>
+    <connection>scm:git:https://github.com/jpwilhelms/pretty-xml-stream-writer.git</connection>
+    <developerConnection>scm:git:https://github.com/jpwilhelms/pretty-xml-stream-writer.git</developerConnection>
+    <url>https://github.com/jpwilhelms/pretty-xml-stream-writer</url>
   </scm>
   <developers>
     <developer>
       <id>jpwilhelms</id>
       <name>Jan-Peter Wilhelms</name>
-      <email>indenting-xml-stream-writer@wilhelms.dev</email>
+      <email>pretty-xml-stream-writer@wilhelms.dev</email>
     </developer>
   </developers>
   <properties><maven.compiler.release>17</maven.compiler.release><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding><junit.version>5.10.2</junit.version></properties>
@@ -41,6 +41,11 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <version>3.1.4</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

@@ -10,13 +10,15 @@ import jakarta.xml.bind.Marshaller;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import java.io.StringWriter;
+import java.util.Comparator;
+import javax.xml.namespace.QName;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import org.codehaus.stax2.XMLOutputFactory2;
 import org.junit.jupiter.api.Test;
 
-class IndentingXMLStreamWriterTest {
+class PrettyXMLStreamWriterTest {
     @Test void indentsNestedElementsAndSiblings() throws Exception {
         assertEquals("<root>\n  <first>\n    <child/>\n  </first>\n  <second/>\n</root>", write(w -> {
             w.writeStartElement("root"); w.writeStartElement("first"); w.writeStartElement("child"); w.writeEndElement(); w.writeEndElement();
@@ -26,7 +28,7 @@ class IndentingXMLStreamWriterTest {
     @Test void startAndEndOfEmptyElementStayAdjacentForWoodstox() throws Exception {
         StringWriter output = new StringWriter(); WstxOutputFactory factory = new WstxOutputFactory();
         factory.setProperty(XMLOutputFactory2.P_AUTOMATIC_EMPTY_ELEMENTS, true);
-        IndentingXMLStreamWriter writer = new IndentingXMLStreamWriter(factory.createXMLStreamWriter(output));
+        PrettyXMLStreamWriter writer = new PrettyXMLStreamWriter(factory.createXMLStreamWriter(output));
         writer.writeStartElement("root"); writer.writeStartElement("foo"); writer.writeEndElement(); writer.writeEndElement(); writer.flush();
         assertEquals("<root>\n  <foo/>\n</root>", output.toString());
     }
@@ -36,26 +38,26 @@ class IndentingXMLStreamWriterTest {
     @Test void flushCompletesTopLevelEmptyElementForWoodstox() throws Exception {
         StringWriter output = new StringWriter(); WstxOutputFactory factory = new WstxOutputFactory();
         factory.setProperty(XMLOutputFactory2.P_AUTOMATIC_EMPTY_ELEMENTS, true);
-        IndentingXMLStreamWriter writer = new IndentingXMLStreamWriter(factory.createXMLStreamWriter(output));
+        PrettyXMLStreamWriter writer = new PrettyXMLStreamWriter(factory.createXMLStreamWriter(output));
         writer.writeEmptyElement("empty"); writer.flush();
         assertEquals("<empty/>", output.toString());
     }
     @Test void writeEmptyElementStaysSelfClosingEvenWithoutAutomaticEmptyElements() throws Exception {
         StringWriter output = new StringWriter(); WstxOutputFactory factory = new WstxOutputFactory();
         factory.setProperty(XMLOutputFactory2.P_AUTOMATIC_EMPTY_ELEMENTS, false);
-        IndentingXMLStreamWriter writer = new IndentingXMLStreamWriter(factory.createXMLStreamWriter(output));
+        PrettyXMLStreamWriter writer = new PrettyXMLStreamWriter(factory.createXMLStreamWriter(output));
         writer.writeStartElement("root"); writer.writeEmptyElement("empty"); writer.writeStartElement("sibling"); writer.writeEndElement(); writer.writeEndElement(); writer.close();
         assertEquals("<root>\n  <empty/>\n  <sibling></sibling>\n</root>", output.toString());
     }
     @Test void writeAttributeAfterAFlushedTopLevelEmptyElementThrows() throws Exception {
         StringWriter output = new StringWriter();
-        IndentingXMLStreamWriter writer = new IndentingXMLStreamWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output));
+        PrettyXMLStreamWriter writer = new PrettyXMLStreamWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output));
         writer.writeEmptyElement("x"); writer.flush();
         assertThrows(XMLStreamException.class, () -> writer.writeAttribute("a", "b"));
     }
     @Test void writeAttributeAfterAFlushedBufferedEmptyChildStillApplies() throws Exception {
         StringWriter output = new StringWriter();
-        IndentingXMLStreamWriter writer = new IndentingXMLStreamWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output));
+        PrettyXMLStreamWriter writer = new PrettyXMLStreamWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output));
         writer.writeStartElement("root"); writer.writeEmptyElement("x"); writer.flush(); writer.writeAttribute("id", "1"); writer.writeEndElement(); writer.flush();
         assertEquals("<root>\n  <x id=\"1\"/>\n</root>", output.toString());
     }
@@ -83,7 +85,7 @@ class IndentingXMLStreamWriterTest {
     }
     @Test void dtdAndRootAreSeparatedAfterStartDocument() throws Exception {
         StringWriter output = new StringWriter();
-        IndentingXMLStreamWriter writer = new IndentingXMLStreamWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output));
+        PrettyXMLStreamWriter writer = new PrettyXMLStreamWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output));
         writer.writeStartDocument("UTF-8", "1.0");
         writer.writeDTD("<!DOCTYPE root>");
         writer.writeStartElement("root"); writer.writeEndElement();
@@ -97,7 +99,7 @@ class IndentingXMLStreamWriterTest {
     }
     @Test void supportsLfCrLfAndTabs() throws Exception {
         StringWriter output = new StringWriter(); CountingWriter raw = new CountingWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output));
-        IndentingXMLStreamWriter writer = new IndentingXMLStreamWriter(raw, "\t", "\r\n");
+        PrettyXMLStreamWriter writer = new PrettyXMLStreamWriter(raw, "\t", "\r\n");
         writer.writeStartElement("r"); writer.writeStartElement("x"); writer.writeEndElement(); writer.writeEndElement(); writer.flush();
         assertEquals("\r\n\t\r\n", raw.writtenCharacters.toString());
         assertEquals("<r>&#xd;\n\t<x/>&#xd;\n</r>", output.toString());
@@ -118,17 +120,72 @@ class IndentingXMLStreamWriterTest {
     }
     @Test void flushAndCloseAreForwarded() throws Exception {
         StringWriter output = new StringWriter(); CountingWriter raw = new CountingWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output));
-        IndentingXMLStreamWriter writer = new IndentingXMLStreamWriter(raw); writer.writeStartElement("r"); writer.writeEndElement(); writer.flush(); writer.close();
+        PrettyXMLStreamWriter writer = new PrettyXMLStreamWriter(raw); writer.writeStartElement("r"); writer.writeEndElement(); writer.flush(); writer.close();
         assertEquals(1, raw.flushes); assertEquals(1, raw.closes); assertEquals("<r/>", output.toString());
     }
     @Test void worksWithJakartaJaxbWithoutLibraryRuntimeDependency() throws Exception {
-        StringWriter output = new StringWriter(); IndentingXMLStreamWriter writer = new IndentingXMLStreamWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output));
+        StringWriter output = new StringWriter(); PrettyXMLStreamWriter writer = new PrettyXMLStreamWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output));
         Marshaller marshaller = JAXBContext.newInstance(JaxbValue.class).createMarshaller(); marshaller.setProperty(Marshaller.JAXB_FRAGMENT, true); marshaller.marshal(new JaxbValue(), writer); writer.flush();
         assertEquals("<value>\n  <foo>bar</foo>\n  <empty></empty>\n</value>", output.toString());
     }
-    private static String write(ThrowingConsumer<IndentingXMLStreamWriter> actions) throws Exception { return write("  ", "\n", actions); }
-    private static String write(String indent, String newLine, ThrowingConsumer<IndentingXMLStreamWriter> actions) throws Exception {
-        StringWriter output = new StringWriter(); IndentingXMLStreamWriter writer = new IndentingXMLStreamWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output), indent, newLine); actions.accept(writer); writer.flush(); return output.toString();
+
+    @Test void withoutAttributeOrderAttributesKeepWriteOrder() throws Exception {
+        assertEquals("<r b=\"2\" a=\"1\"/>", write(w -> { w.writeStartElement("r"); w.writeAttribute("b", "2"); w.writeAttribute("a", "1"); w.writeEndElement(); }));
+    }
+    @Test void attributeOrderSortsAttributesOfMatchingElement() throws Exception {
+        AttributeOrder order = element -> "r".equals(element.getLocalPart()) ? Comparator.comparing(QName::getLocalPart) : null;
+        assertEquals("<r a=\"1\" b=\"2\" c=\"3\"/>", writeOrdered(order, w -> {
+            w.writeStartElement("r"); w.writeAttribute("c", "3"); w.writeAttribute("a", "1"); w.writeAttribute("b", "2"); w.writeEndElement();
+        }));
+    }
+    @Test void attributeOrderIsScopedPerElement() throws Exception {
+        AttributeOrder order = element -> "sorted".equals(element.getLocalPart()) ? Comparator.comparing(QName::getLocalPart) : null;
+        assertEquals(
+                "<root>\n  <sorted a=\"1\" b=\"2\"/>\n  <unsorted z=\"9\" a=\"1\"/>\n</root>",
+                writeOrdered(order, w -> {
+                    w.writeStartElement("root");
+                    w.writeStartElement("sorted"); w.writeAttribute("b", "2"); w.writeAttribute("a", "1"); w.writeEndElement();
+                    w.writeStartElement("unsorted"); w.writeAttribute("z", "9"); w.writeAttribute("a", "1"); w.writeEndElement();
+                    w.writeEndElement();
+                })
+        );
+    }
+    @Test void attributeOrderNullComparatorLeavesElementUnchanged() throws Exception {
+        AttributeOrder order = element -> null;
+        assertEquals("<r b=\"2\" a=\"1\"/>", writeOrdered(order, w -> { w.writeStartElement("r"); w.writeAttribute("b", "2"); w.writeAttribute("a", "1"); w.writeEndElement(); }));
+    }
+    @Test void attributeOrderNeverReordersNamespaceDeclarations() throws Exception {
+        AttributeOrder order = element -> Comparator.comparing(QName::getLocalPart);
+        assertEquals(
+                "<r xmlns:z=\"urn:z\" xmlns:a=\"urn:a\" a=\"1\" z=\"2\"/>",
+                writeOrdered(order, w -> {
+                    w.writeStartElement("r"); w.writeNamespace("z", "urn:z"); w.writeNamespace("a", "urn:a"); w.writeAttribute("z", "2"); w.writeAttribute("a", "1"); w.writeEndElement();
+                })
+        );
+    }
+    @Test void attributeOrderSortIsStableForAttributesTreatedAsEqual() throws Exception {
+        AttributeOrder order = element -> Comparator.comparing(attr -> !"name".equals(attr.getLocalPart()));
+        assertEquals("<r name=\"x\" b=\"2\" a=\"1\"/>", writeOrdered(order, w -> {
+            w.writeStartElement("r"); w.writeAttribute("b", "2"); w.writeAttribute("a", "1"); w.writeAttribute("name", "x"); w.writeEndElement();
+        }));
+    }
+    @Test void attributeOrderDistinguishesSameLocalNameAcrossNamespaces() throws Exception {
+        // A plain String local name could not tell "type" and "p:type" apart; QName can.
+        AttributeOrder order = element -> Comparator.comparing(attr -> !attr.getNamespaceURI().isEmpty());
+        assertEquals(
+                "<x xmlns:p=\"urn:p\" type=\"a\" p:type=\"b\"/>",
+                writeOrdered(order, w -> {
+                    w.writeStartElement("x"); w.writeNamespace("p", "urn:p");
+                    w.writeAttribute("p", "urn:p", "type", "b"); w.writeAttribute("type", "a");
+                    w.writeEndElement();
+                })
+        );
+    }
+
+    private static String write(ThrowingConsumer<PrettyXMLStreamWriter> actions) throws Exception { return write("  ", "\n", null, actions); }
+    private static String writeOrdered(AttributeOrder order, ThrowingConsumer<PrettyXMLStreamWriter> actions) throws Exception { return write("  ", "\n", order, actions); }
+    private static String write(String indent, String newLine, AttributeOrder order, ThrowingConsumer<PrettyXMLStreamWriter> actions) throws Exception {
+        StringWriter output = new StringWriter(); PrettyXMLStreamWriter writer = new PrettyXMLStreamWriter(XMLOutputFactory.newFactory().createXMLStreamWriter(output), indent, newLine, order); actions.accept(writer); writer.flush(); return output.toString();
     }
     @FunctionalInterface private interface ThrowingConsumer<T> { void accept(T value) throws Exception; }
     @XmlRootElement(name = "value") public static class JaxbValue { @XmlElement public String foo = "bar"; @XmlElement public String empty = ""; public JaxbValue() { } }
